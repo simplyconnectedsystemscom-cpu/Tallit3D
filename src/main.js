@@ -143,32 +143,37 @@ function drawStripePattern(x, y, w, h) {
 
   const stripeGroupWidth = w * 0.15; // 15% of width for stripes
 
-  // Draw stripes on Left Side
-  drawStripesAt(x + (w * 0.1), y, stripeGroupWidth, h);
+  // Draw stripes on Left Side (Normal Order: Outer -> Inner)
+  drawStripesAt(x + (w * 0.1), y, stripeGroupWidth, h, state.stripeColors);
 
-  // Draw stripes on Right Side
-  drawStripesAt(x + w - (w * 0.1) - stripeGroupWidth, y, stripeGroupWidth, h);
+  // Draw stripes on Right Side (Reversed Order: Inner -> Outer)
+  // We want the pattern to be symmetric around the center.
+  // Left Side: 0(Outer)..3(Inner)
+  // Right Side: 3(Inner)..0(Outer)
+  // Since we draw Left-to-Right, the Right Side needs to draw 3, 2, 1, 0.
+  const reversedColors = [...state.stripeColors].reverse();
+  drawStripesAt(x + w - (w * 0.1) - stripeGroupWidth, y, stripeGroupWidth, h, reversedColors);
 }
 
-function drawStripesAt(startX, startY, groupWidth, h) {
-  // We correspond these strictly to state.stripeColors[0..3]
+function drawStripesAt(startX, startY, groupWidth, h, colors) {
+  // We correspond these strictly to the passed colors array
   // Pattern: [0]Thick, space, [1]Thin, space, [2]Thin, space, [3]Thick
   const gap = groupWidth / 9; // spacing unit (2+1+1+1+1+1+2 = 9 units width)
 
   // Stripe 1 (Thick) - Index 0
-  ctx.fillStyle = state.stripeColors[0].hex;
+  ctx.fillStyle = colors[0].hex;
   ctx.fillRect(startX, startY, gap * 2, h);
 
   // Stripe 2 (Thin) - Index 1
-  ctx.fillStyle = state.stripeColors[1].hex;
+  ctx.fillStyle = colors[1].hex;
   ctx.fillRect(startX + (gap * 3), startY, gap, h);
 
   // Stripe 3 (Thin) - Index 2
-  ctx.fillStyle = state.stripeColors[2].hex;
+  ctx.fillStyle = colors[2].hex;
   ctx.fillRect(startX + (gap * 5), startY, gap, h);
 
   // Stripe 4 (Thick) - Index 3
-  ctx.fillStyle = state.stripeColors[3].hex;
+  ctx.fillStyle = colors[3].hex;
   ctx.fillRect(startX + (gap * 7), startY, gap * 2, h);
 }
 
