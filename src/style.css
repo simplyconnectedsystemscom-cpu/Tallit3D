@@ -151,6 +151,50 @@ canvas {
   letter-spacing: 1px;
 }
 
+/* Stripe Selector */
+.stripe-selector-container {
+  display: flex;
+  gap: 8px;
+  /* Spacing between stripes */
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1.5rem;
+  border-radius: 8px;
+  justify-content: center;
+  border: 1px solid var(--color-glass-border);
+}
+
+.stripe-bar {
+  height: 60px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.stripe-bar:hover {
+  transform: translateY(-2px);
+}
+
+.stripe-bar.active {
+  border-color: #fff;
+  box-shadow: 0 0 10px var(--color-accent);
+  transform: scale(1.05);
+  z-index: 2;
+}
+
+.stripe-bar.active::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid #fff;
+}
+
+
 /* Color Picker */
 .color-picker {
   display: grid;

@@ -59,7 +59,8 @@ const TZITZIT_TYPES = [
 // State
 let state = {
   baseColor: COLORS[1], // Default Blanchi
-  stripeColor: COLORS[8], // Default Marine
+  stripeColors: [COLORS[8], COLORS[8], COLORS[8], COLORS[8]], // Default Marine for all 4 stripes
+  activeStripeIndex: 0, // Currently selected stripe for editing
   tzitzitType: TZITZIT_TYPES[0]
 };
 
@@ -68,6 +69,7 @@ const canvas = document.getElementById('tallitCanvas');
 const ctx = canvas.getContext('2d');
 // const baseColorPicker = document.getElementById('baseColorPicker'); // Removed
 const stripeColorPicker = document.getElementById('stripeColorPicker');
+const stripeSelector = document.getElementById('stripeSelector');
 const tzitzitSelector = document.getElementById('tzitzitSelector');
 const downloadBtn = document.getElementById('downloadBtn');
 const designSummary = document.getElementById('designSummary');
@@ -136,8 +138,6 @@ function drawTexture(x, y, w, h) {
 }
 
 function drawStripePattern(x, y, w, h) {
-  ctx.fillStyle = state.stripeColor.hex;
-
   // Stripe configuration (relative positions from ends)
   // Classic Tallit often has stripes near the ends.
 
@@ -151,20 +151,24 @@ function drawStripePattern(x, y, w, h) {
 }
 
 function drawStripesAt(startX, startY, groupWidth, h) {
-  // Pattern: Thick, space, Thin, space, Thin, space, Thin, space, Thick
-  const numStripes = 5;
-  const gap = groupWidth / 9; // spacing unit
+  // We correspond these strictly to state.stripeColors[0..3]
+  // Pattern: [0]Thick, space, [1]Thin, space, [2]Thin, space, [3]Thick
+  const gap = groupWidth / 9; // spacing unit (2+1+1+1+1+1+2 = 9 units width)
 
-  // Stripe 1 (Thick)
+  // Stripe 1 (Thick) - Index 0
+  ctx.fillStyle = state.stripeColors[0].hex;
   ctx.fillRect(startX, startY, gap * 2, h);
 
-  // Stripe 2 (Thin)
+  // Stripe 2 (Thin) - Index 1
+  ctx.fillStyle = state.stripeColors[1].hex;
   ctx.fillRect(startX + (gap * 3), startY, gap, h);
 
-  // Stripe 3 (Thin)
+  // Stripe 3 (Thin) - Index 2
+  ctx.fillStyle = state.stripeColors[2].hex;
   ctx.fillRect(startX + (gap * 5), startY, gap, h);
 
-  // Stripe 4 (Thick)
+  // Stripe 4 (Thick) - Index 3
+  ctx.fillStyle = state.stripeColors[3].hex;
   ctx.fillRect(startX + (gap * 7), startY, gap * 2, h);
 }
 
@@ -179,7 +183,7 @@ function drawAtara(x, y, w) {
   ctx.fillRect(ataraX, y, ataraWidth, ataraHeight);
 
   // Border
-  ctx.strokeStyle = state.stripeColor.hex;
+  ctx.strokeStyle = state.stripeColors[0].hex; // match first stripe
   ctx.lineWidth = 1;
   ctx.strokeRect(ataraX, y, ataraWidth, ataraHeight);
 }
@@ -232,19 +236,35 @@ function drawSingleTzitzit(cx, cy, mainColor, secColor) {
 }
 
 // UI Rendering
+// UI Rendering
 function renderControls() {
   // 1. Base Color - STATIC (Handled in HTML)
 
 
-  // 2. Stripe Color
+  // 2. Stripe Selector Bars (New)
+  // We represent the 4 stripes: Thick, Thin, Thin, Thick
+  const widths = ['40px', '15px', '15px', '40px'];
+
+  stripeSelector.innerHTML = state.stripeColors.map((color, index) => `
+    <div class="stripe-bar ${state.activeStripeIndex === index ? 'active' : ''}"
+         style="background-color: ${color.hex}; width: ${widths[index]};"
+         title="Stripe ${index + 1}"
+         data-index="${index}">
+    </div>
+  `).join('');
+
+
+  // 2b. Stripe Color Picker
+  // Now simply acts as "Apply Color to Active Stripe"
   stripeColorPicker.innerHTML = COLORS.map(c => `
-    <div class="color-swatch ${state.stripeColor.name === c.name ? 'selected' : ''}" 
+    <div class="color-swatch" 
          style="background-color: ${c.hex}"
          title="${c.name}"
-         data-type="stripe"
+         data-type="stripe-color"
          data-name="${c.name}">
     </div>
   `).join('');
+
 
   // 3. Tzitzit Type
   tzitzitSelector.innerHTML = TZITZIT_TYPES.map(t => `
@@ -259,6 +279,15 @@ function renderControls() {
 }
 
 function attachListeners() {
+  // Stripe Selector Handling
+  document.querySelectorAll('.stripe-bar').forEach(el => {
+    el.addEventListener('click', (e) => {
+      state.activeStripeIndex = parseInt(e.target.dataset.index);
+      renderControls(); // Redraw to update active highlight
+      // No need to redraw canvas just for changing selection
+    });
+  });
+
   // Color Pickers
   document.querySelectorAll('.color-swatch').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -266,10 +295,13 @@ function attachListeners() {
       const name = e.target.dataset.name;
       const color = COLORS.find(c => c.name === name);
 
-      if (type === 'base') state.baseColor = color;
-      if (type === 'stripe') state.stripeColor = color;
+      if (type === 'stripe-color') {
+        // Update the CURRENTLY SELECTED stripe
+        state.stripeColors[state.activeStripeIndex] = color;
+      }
+      // Base color is static now, logic removed
 
-      renderControls(); // Re-render to update selection UI
+      renderControls(); // Re-render to show updated color on the bar
       renderCanvas();   // Update Canvas
       updateSummary();
     });
@@ -291,7 +323,7 @@ function attachListeners() {
 function updateSummary() {
   designSummary.innerHTML = `
         <strong>Base:</strong> ${state.baseColor.name} <br>
-        <strong>Stripes:</strong> ${state.stripeColor.name} <br>
+        <strong>Stripes:</strong> Custom Pattern <br>
         <strong>Style:</strong> ${state.tzitzitType.name}
     `;
 }
