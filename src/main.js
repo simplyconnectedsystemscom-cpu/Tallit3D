@@ -59,8 +59,8 @@ const TZITZIT_TYPES = [
 // State
 let state = {
   baseColor: COLORS[1], // Default Blanchi
-  stripeColors: [COLORS[8], COLORS[8], COLORS[8], COLORS[8]], // Default Marine for all 4 stripes
-  activeStripeIndex: 0, // Currently selected stripe for editing
+  stripePattern: [], // Array of { width: number, color: Object, type: 'stripe'|'space', id: number }
+  activeStripeId: null, // ID of currently selected stripe
   tzitzitType: TZITZIT_TYPES[0]
 };
 
@@ -69,7 +69,8 @@ const canvas = document.getElementById('tallitCanvas');
 const ctx = canvas.getContext('2d');
 // const baseColorPicker = document.getElementById('baseColorPicker'); // Removed
 const stripeColorPicker = document.getElementById('stripeColorPicker');
-const stripeSelector = document.getElementById('stripeSelector');
+const stripeStack = document.getElementById('stripeStack');
+const zoneUsageEl = document.getElementById('zoneUsage');
 const tzitzitSelector = document.getElementById('tzitzitSelector');
 const downloadBtn = document.getElementById('downloadBtn');
 const designSummary = document.getElementById('designSummary');
@@ -138,43 +139,53 @@ function drawTexture(x, y, w, h) {
 }
 
 function drawStripePattern(x, y, w, h) {
-  // Stripe configuration (relative positions from ends)
-  // Classic Tallit often has stripes near the ends.
+  // Dimensions in inches
+  const TALLIT_LENGTH = 60;
+  const STRIPE_START_OFFSET = 10;
 
-  const stripeGroupWidth = w * 0.15; // 15% of width for stripes
+  // Calculate Scale (Pixels Per Inch)
+  // Assuming full canvas width represents the 60 inches of the Tallit
+  const ppi = w / TALLIT_LENGTH;
 
-  // Draw stripes on Left Side (Normal Order: Outer -> Inner)
-  drawStripesAt(x + (w * 0.1), y, stripeGroupWidth, h, state.stripeColors);
+  const startPixelLeft = x + (STRIPE_START_OFFSET * ppi);
+  const startPixelRight = x + w - (STRIPE_START_OFFSET * ppi);
 
-  // Draw stripes on Right Side (Reversed Order: Inner -> Outer)
-  // We want the pattern to be symmetric around the center.
-  // Left Side: 0(Outer)..3(Inner)
-  // Right Side: 3(Inner)..0(Outer)
-  // Since we draw Left-to-Right, the Right Side needs to draw 3, 2, 1, 0.
-  const reversedColors = [...state.stripeColors].reverse();
-  drawStripesAt(x + w - (w * 0.1) - stripeGroupWidth, y, stripeGroupWidth, h, reversedColors);
-}
+  // Draw Left Side (from 10" inwards)
+  let currentPos = startPixelLeft;
 
-function drawStripesAt(startX, startY, groupWidth, h, colors) {
-  // We correspond these strictly to the passed colors array
-  // Pattern: [0]Thick, space, [1]Thin, space, [2]Thin, space, [3]Thick
-  const gap = groupWidth / 9; // spacing unit (2+1+1+1+1+1+2 = 9 units width)
+  state.stripePattern.forEach(item => {
+    const widthPx = item.width * ppi;
 
-  // Stripe 1 (Thick) - Index 0
-  ctx.fillStyle = colors[0].hex;
-  ctx.fillRect(startX, startY, gap * 2, h);
+    if (item.type === 'stripe') {
+      ctx.fillStyle = item.color.hex;
+      ctx.fillRect(currentPos, y, widthPx, h);
+    }
+    // If 'space', we just skip (transparent), or draw base color if needed? 
+    // Actually, background is baseColor, so spaces are just empty.
 
-  // Stripe 2 (Thin) - Index 1
-  ctx.fillStyle = colors[1].hex;
-  ctx.fillRect(startX + (gap * 3), startY, gap, h);
+    currentPos += widthPx;
+  });
 
-  // Stripe 3 (Thin) - Index 2
-  ctx.fillStyle = colors[2].hex;
-  ctx.fillRect(startX + (gap * 5), startY, gap, h);
+  // Draw Right Side (Mirror Image)
+  // We start from right edge (minus offset) and move INWARDS (to the left)
+  // But since we draw rectangles from top-left, we calculate X for each stripe based on reversed order.
 
-  // Stripe 4 (Thick) - Index 3
-  ctx.fillStyle = colors[3].hex;
-  ctx.fillRect(startX + (gap * 7), startY, gap * 2, h);
+  let currentPosRight = startPixelRight;
+
+  // We mirror the pattern structure. The "First" stripe added (Outer) touches the Offset line.
+  state.stripePattern.forEach(item => {
+    const widthPx = item.width * ppi;
+
+    // Move "back" by the width of this stripe to find its top-left X
+    currentPosRight -= widthPx;
+
+    if (item.type === 'stripe') {
+      ctx.fillStyle = item.color.hex;
+      ctx.fillRect(currentPosRight, y, widthPx, h);
+    }
+
+    // Loop continues, moving further left (inwards)
+  });
 }
 
 function drawAtara(x, y, w) {
@@ -242,21 +253,35 @@ function drawSingleTzitzit(cx, cy, mainColor, secColor) {
 
 // UI Rendering
 // UI Rendering
+// UI Rendering
 function renderControls() {
-  // 1. Base Color - STATIC (Handled in HTML)
+  // 1. Zone Usage Logic
+  const currentUsage = state.stripePattern.reduce((acc, item) => acc + item.width, 0);
+  zoneUsageEl.innerHTML = `${currentUsage.toFixed(2)}"`;
+  zoneUsageEl.style.color = currentUsage > 10 ? '#ff6b6b' : 'inherit';
 
+  // 2. Render Stripe Stack
+  if (state.stripePattern.length === 0) {
+    stripeStack.innerHTML = '<div class="empty-state">No stripes added yet.</div>';
+  } else {
+    stripeStack.innerHTML = state.stripePattern.map((item, index) => {
+      const isStripe = item.type === 'stripe';
+      const label = `${item.width}" ${isStripe ? 'Stripe' : 'Space'}`;
+      const colorHex = isStripe ? item.color.hex : 'transparent';
+      const border = isStripe ? 'none' : '1px dashed #555';
+      const isActive = item.id === state.activeStripeId;
 
-  // 2. Stripe Selector Bars (New)
-  // We represent the 4 stripes: Thick, Thin, Thin, Thick
-  const widths = ['40px', '15px', '15px', '40px'];
-
-  stripeSelector.innerHTML = state.stripeColors.map((color, index) => `
-    <div class="stripe-bar ${state.activeStripeIndex === index ? 'active' : ''}"
-         style="background-color: ${color.hex}; width: ${widths[index]};"
-         title="Stripe ${index + 1}"
-         data-index="${index}">
-    </div>
-  `).join('');
+      return `
+        <div class="stripe-item ${isActive ? 'active' : ''}" data-id="${item.id}">
+           <div style="display:flex; align-items:center;">
+             <div class="preview-swatch" style="background-color: ${colorHex}; border: ${border}"></div>
+             <span class="info">${label}</span>
+           </div>
+           <span class="delete-btn" data-delete-id="${item.id}" title="Remove">✕</span>
+        </div>
+      `;
+    }).join('');
+  }
 
 
   // 2b. Stripe Color Picker
@@ -284,14 +309,37 @@ function renderControls() {
 }
 
 function attachListeners() {
-  // Stripe Selector Handling
-  document.querySelectorAll('.stripe-bar').forEach(el => {
+  // Add Stripe/Space Buttons
+  document.querySelectorAll('.btn-add-stripe').forEach(btn => {
+    btn.onclick = () => addStripeItem(parseFloat(btn.dataset.size), 'stripe');
+  });
+
+  document.querySelectorAll('.btn-add-space').forEach(btn => {
+    btn.onclick = () => addStripeItem(parseFloat(btn.dataset.size), 'space');
+  });
+
+  // Stack Interactions (Select / Delete)
+  const items = document.querySelectorAll('.stripe-item');
+  items.forEach(el => {
     el.addEventListener('click', (e) => {
-      state.activeStripeIndex = parseInt(e.target.dataset.index);
-      renderControls(); // Redraw to update active highlight
-      // No need to redraw canvas just for changing selection
+      // Check if delete button was clicked
+      if (e.target.classList.contains('delete-btn')) {
+        const id = parseInt(e.target.dataset.deleteId);
+        removeStripeItem(id);
+        e.stopPropagation(); // prevent selection
+        return;
+      }
+
+      // Otherwise select
+      const id = parseInt(el.dataset.id);
+      const item = state.stripePattern.find(i => i.id === id);
+      if (item && item.type === 'stripe') {
+        state.activeStripeId = id;
+        renderControls();
+      }
     });
   });
+
 
   // Color Pickers
   document.querySelectorAll('.color-swatch').forEach(el => {
@@ -300,11 +348,13 @@ function attachListeners() {
       const name = e.target.dataset.name;
       const color = COLORS.find(c => c.name === name);
 
-      if (type === 'stripe-color') {
-        // Update the CURRENTLY SELECTED stripe
-        state.stripeColors[state.activeStripeIndex] = color;
+      if (type === 'stripe-color' && state.activeStripeId !== null) {
+        // Find the active item
+        const item = state.stripePattern.find(i => i.id === state.activeStripeId);
+        if (item && item.type === 'stripe') {
+          item.color = color;
+        }
       }
-      // Base color is static now, logic removed
 
       renderControls(); // Re-render to show updated color on the bar
       renderCanvas();   // Update Canvas
@@ -323,6 +373,43 @@ function attachListeners() {
       updateSummary();
     });
   });
+}
+
+// Logic Helpers
+function addStripeItem(size, type) {
+  const currentUsage = state.stripePattern.reduce((acc, item) => acc + item.width, 0);
+
+  if (currentUsage + size > 10.01) { // .01 for float margin
+    alert("Pattern limit reached! The stripe zone spans 10 inches.");
+    return;
+  }
+
+  const newItem = {
+    id: Date.now(),
+    width: size,
+    type: type,
+    color: type === 'stripe' ? COLORS[8] : null // Default Blue for stripes
+  };
+
+  state.stripePattern.push(newItem);
+
+  // Auto-select if it's a stripe
+  if (type === 'stripe') {
+    state.activeStripeId = newItem.id;
+  }
+
+  renderControls();
+  renderCanvas();
+  updateSummary();
+}
+
+function removeStripeItem(id) {
+  state.stripePattern = state.stripePattern.filter(i => i.id !== id);
+  if (state.activeStripeId === id) state.activeStripeId = null;
+
+  renderControls();
+  renderCanvas();
+  updateSummary();
 }
 
 function updateSummary() {

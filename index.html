@@ -46,14 +46,33 @@
         </div>
 
         <div class="control-group">
-          <h3>2. Customize Stripes</h3>
-          <p style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 0.5rem;">Select a stripe to color it:</p>
+          <h3>2. Build Your Pattern</h3>
+          <p class="usage-info">Zone Usage: <span id="zoneUsage">0"</span> / 10"</p>
 
-          <div id="stripeSelector" class="stripe-selector-container">
-            <!-- Dynamically populated bars -->
+          <div class="builder-controls">
+            <div class="control-row">
+              <span>Stripe:</span>
+              <button class="btn-add-stripe" data-size="0.25">1/4"</button>
+              <button class="btn-add-stripe" data-size="0.5">1/2"</button>
+              <button class="btn-add-stripe" data-size="1">1"</button>
+              <button class="btn-add-stripe" data-size="2">2"</button>
+            </div>
+            <div class="control-row">
+              <span>Space:</span>
+              <button class="btn-add-space" data-size="0.25">1/4"</button>
+              <button class="btn-add-space" data-size="0.5">1/2"</button>
+              <button class="btn-add-space" data-size="1">1"</button>
+              <button class="btn-add-space" data-size="2">2"</button>
+            </div>
           </div>
 
-          <p style="font-size: 0.8rem; opacity: 0.7; margin: 1rem 0 0.5rem;">Pick a color for the selected stripe:</p>
+          <!-- Visual Stack of Stripes -->
+          <div id="stripeStack" class="stripe-stack-container">
+            <!-- Dynamically populated -->
+            <div class="empty-state">No stripes added yet.</div>
+          </div>
+
+          <p style="font-size: 0.8rem; opacity: 0.7; margin: 1rem 0 0.5rem;">Pick color for selected stripe:</p>
           <div class="color-picker" id="stripeColorPicker">
             <!-- Dynamically populated -->
           </div>
