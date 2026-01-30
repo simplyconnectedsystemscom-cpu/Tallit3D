@@ -8,7 +8,7 @@ Built for **Leslie's Weaving** to allow customers to select colors and styles.
 - **Custom Colors**: Integrated **Maurice Brassard & Fils Inc** Chenille color palette.
 - **Configurations**:
     - **Warp (Base)**: Fixed to **Blanchi (CH101)** (White).
-    - **Weft (Stripes)**: Customizable stripe colors.
+    - **Weft (Stripes)**: **Individual Stripe Customization**. Select any of the 4 stripes to color them individually. Changes mirror symmetrically to the other side.
     - **Tzitzit**: Select standard, Techelet, or specific knot styles.
 - **Export**: Download design as PNG.
 
@@ -24,8 +24,10 @@ npm install
 
 # Run development server
 npm run dev
+# Note: Ensure 'base' is commented out in vite.config.js for local dev.
 
 # Build for production
+# Uncomment 'base' in vite.config.js before building for GitHub Pages!
 npm run build
 
 # Preview production build
