@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap"
+    rel="stylesheet">
+  <title>Tallit Designer | Leslie's Weaving</title>
+</head>
+
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="container">
+        <h1 class="logo">Leslie's Weaving</h1>
+        <nav>
+          <a href="https://lesliesweaving.com" class="nav-link">Home</a>
+          <a href="#" class="nav-link active">Tallit Designer</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="designer-container">
+      <div class="canvas-area glass-panel">
+        <canvas id="tallitCanvas" width="800" height="600"></canvas>
+        <div class="canvas-controls">
+          <button id="downloadBtn" class="btn">Download Design</button>
+        </div>
+      </div>
+
+      <aside class="controls-panel glass-panel">
+        <h2>Design Your Tallit</h2>
+
+        <div class="control-group">
+          <h3>1. Base Color (Warp)</h3>
+          <div class="static-value">
+            <span class="color-dot" style="background-color: #FFFFFF; border: 1px solid #ddd;"></span>
+            <span>Blanchi (CH101) - <em>Fixed</em></span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3>2. Stripe Color</h3>
+          <div class="color-picker" id="stripeColorPicker">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3>3. Tzitzit Type</h3>
+          <div class="tzitzit-selector" id="tzitzitSelector">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3>Summary</h3>
+          <p id="designSummary">Custom Tallit with Standard White Tzitzit</p>
+        </div>
+
+      </aside>
+    </main>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
