@@ -66,7 +66,7 @@ let state = {
 // Elements
 const canvas = document.getElementById('tallitCanvas');
 const ctx = canvas.getContext('2d');
-const baseColorPicker = document.getElementById('baseColorPicker');
+// const baseColorPicker = document.getElementById('baseColorPicker'); // Removed
 const stripeColorPicker = document.getElementById('stripeColorPicker');
 const tzitzitSelector = document.getElementById('tzitzitSelector');
 const downloadBtn = document.getElementById('downloadBtn');
@@ -233,15 +233,8 @@ function drawSingleTzitzit(cx, cy, mainColor, secColor) {
 
 // UI Rendering
 function renderControls() {
-  // 1. Base Color
-  baseColorPicker.innerHTML = COLORS.map(c => `
-    <div class="color-swatch ${state.baseColor.name === c.name ? 'selected' : ''}" 
-         style="background-color: ${c.hex}"
-         title="${c.name}"
-         data-type="base"
-         data-name="${c.name}">
-    </div>
-  `).join('');
+  // 1. Base Color - STATIC (Handled in HTML)
+
 
   // 2. Stripe Color
   stripeColorPicker.innerHTML = COLORS.map(c => `
