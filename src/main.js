@@ -57,75 +57,340 @@ const TZITZIT_TYPES = [
 ];
 
 // State
+// State
 let state = {
   baseColor: COLORS[1], // Default Blanchi
-  stripePattern: [], // Array of { width: number, color: Object, type: 'stripe'|'space', id: number }
-  activeStripeId: null, // ID of currently selected stripe
-  tzitzitType: TZITZIT_TYPES[0]
+  stripePattern: [],
+  activeStripeId: null,
+  tzitzitType: TZITZIT_TYPES[0],
+  isBackView: false // New state for flipping
 };
 
-// Elements
+// ... elements ...
+const flipViewBtn = document.getElementById('flipViewBtn');
 const canvas = document.getElementById('tallitCanvas');
 const ctx = canvas.getContext('2d');
-// const baseColorPicker = document.getElementById('baseColorPicker'); // Removed
-const stripeColorPicker = document.getElementById('stripeColorPicker');
-const stripeStack = document.getElementById('stripeStack');
 const zoneUsageEl = document.getElementById('zoneUsage');
+const stripeStack = document.getElementById('stripeStack');
+const stripeColorPicker = document.getElementById('stripeColorPicker');
 const tzitzitSelector = document.getElementById('tzitzitSelector');
 const downloadBtn = document.getElementById('downloadBtn');
-const designSummary = document.getElementById('designSummary');
-
-
-// Initialization
-function init() {
-  renderControls();
-  renderCanvas();
-  updateSummary();
-
-  // Resize canvas responsively (basic implementation)
-  // window.addEventListener('resize', renderCanvas); 
-}
 
 // Rendering Logic
+// Rendering Logic
 function renderCanvas() {
-  // Clear Canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   const w = canvas.width;
   const h = canvas.height;
-  const padding = 50;
 
-  // Tallit Dimensions (simulated)
+  console.log(`renderCanvas running. View: ${state.isBackView ? 'BACK' : 'FRONT'}, Size: ${w}x${h}`);
+
+  // Clear entire canvas
+  ctx.clearRect(0, 0, w, h);
+
+  const padding = 50;
   const tWidth = w - (padding * 2);
   const tHeight = h - (padding * 2);
   const startX = padding;
   const startY = padding;
 
-  // 1. Draw Tallit Base (The Cloth)
-  ctx.fillStyle = state.baseColor.hex;
-  ctx.shadowColor = 'rgba(0,0,0,0.3)';
-  ctx.shadowBlur = 20;
-  ctx.shadowOffsetX = 5;
-  ctx.shadowOffsetY = 10;
-  ctx.fillRect(startX, startY, tWidth, tHeight);
+  if (tWidth <= 0 || tHeight <= 0) {
+    console.error("Invalid dimensions for Tallit:", tWidth, tHeight);
+    return;
+  }
 
-  // Reset Shadow
-  ctx.shadowColor = 'transparent';
+  try {
+    // 1. Draw Tallit Base
+    const baseHex = (state.baseColor && state.baseColor.hex) ? state.baseColor.hex : '#FFFFFF';
+    console.log("Drawing Base with color:", baseHex);
 
-  // 1b. Texture Overlay (Simple Noise/Weave simulation)
-  drawTexture(startX, startY, tWidth, tHeight);
+    ctx.save(); // Save context state
+    ctx.fillStyle = baseHex;
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetX = 5;
+    ctx.shadowOffsetY = 10;
+    ctx.fillRect(startX, startY, tWidth, tHeight);
+    ctx.restore(); // Restore to remove shadow settings
 
-  // 2. Draw Stripes
-  // "Fixed stripe pattern" as mentioned by user. 
-  // We'll simulate a classic pattern: thicker bands with thinner lines.
-  drawStripePattern(startX, startY, tWidth, tHeight);
+    // 1b. Texture
+    drawTexture(startX, startY, tWidth, tHeight);
 
-  // 3. Draw Atara (Neckband) - Optional visualization
-  drawAtara(startX, startY, tWidth);
+    // 2. Draw Stripes
+    drawStripePattern(startX, startY, tWidth, tHeight);
 
-  // 4. Draw Tzitzit (Corners)
-  drawTzitzitColors(startX, startY, tWidth, tHeight);
+    if (!state.isBackView) {
+      // FRONT VIEW
+      drawAtara(startX, startY, tWidth);
+      drawTzitzitColors(startX, startY, tWidth, tHeight);
+    } else {
+      // BACK VIEW
+      console.log('Drawing Kanafim (Corners)...');
+      drawKanafim(startX, startY, tWidth, tHeight);
+    }
+
+    // 5. Edges Fringes
+    drawFringes(startX, startY, tWidth, tHeight);
+
+  } catch (e) {
+    console.error('CRITICAL ERROR in renderCanvas:', e);
+    // Draw visual error indicator on canvas
+    ctx.fillStyle = 'red';
+    ctx.font = '20px Arial';
+    ctx.fillText('Rendering Error: ' + e.message, 50, 50);
+  }
 }
+
+function drawKanafim(x, y, w, h) {
+  try {
+    // Draw 4 corner reinforcements (Kanafim)
+    const TALLIT_HEIGHT_INCHES = 45;
+    const ppi = h / TALLIT_HEIGHT_INCHES;
+    const KANAF_SIZE_INCHES = 4.5;
+    const size = KANAF_SIZE_INCHES * ppi;
+
+    const corners = [
+      { x: x, y: y }, // Top Left
+      { x: x + w - size, y: y }, // Top Right
+      { x: x, y: y + h - size }, // Bottom Left
+      { x: x + w - size, y: y + h - size } // Bottom Right
+    ];
+
+    corners.forEach(corner => {
+      // Draw Patch (White square)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = 'rgba(0,0,0,0.1)';
+      ctx.shadowBlur = 5;
+      ctx.fillRect(corner.x, corner.y, size, size);
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+
+      // Stitching/Border
+      ctx.strokeStyle = '#E0E0E0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(corner.x, corner.y, size, size);
+
+      // Holes Logic
+      const holeRadius = 4;
+
+      // Determine relative position based on which corner
+      // Center point for holes relative to "Outer Tip" of the Kanaf
+      // For Top-Left (x,y), offset is positive. For Bottom-Right, offset negative.
+
+      // We want holes INWARDS from the corner tip.
+      // Offset amounts:
+      const offset1 = 20;
+      const offset2 = 45;
+
+      // Calculate px, py for outer hole
+      let px = (corner.x === x) ? x + offset1 : x + w - offset1;
+      let py = (corner.y === y) ? y + offset1 : y + h - offset1;
+
+      // Calculate px2, py2 for inner hole
+      let px2 = (corner.x === x) ? x + offset2 : x + w - offset2;
+      let py2 = (corner.y === y) ? y + offset1 : y + h - offset1;
+      // Note: y stays same for horizontal alignment relative to corner? 
+      // Or diagonals? Let's stick to horizontal alignment relative to top/bottom edge for simplicity shown in weave. 
+
+      // Draw Holes
+      [{ cx: px, cy: py }, { cx: px2, cy: py2 }].forEach(hole => {
+        ctx.beginPath();
+        ctx.arc(hole.cx, hole.cy, holeRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#333';
+        ctx.fill();
+        ctx.strokeStyle = '#DDD';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      // Draw Tzitzit Strings
+      drawTzitzitFromHoles(px, py, px2, py2);
+    });
+  } catch (e) {
+    console.error("Error in drawKanafim:", e);
+  }
+}
+
+// Tzitzit Drawing Logic
+function drawTzitzitFromHoles(x, y, x2, y2) {
+  try {
+    // 1. Draw the "Bridge" loop between holes (Back View)
+    ctx.beginPath();
+    ctx.strokeStyle = '#DDD';
+    ctx.lineWidth = 2;
+    ctx.moveTo(x, y);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    // 2. Draw the Hanging Tzitzit (emerging from outer hole x,y)
+    // Determine style
+    const typeId = state.tzitzitType.id;
+
+    if (typeId === 'ashkenazi') {
+      drawAshkenaziTzitzit(x, y);
+    } else if (typeId === 'sephardic') {
+      drawSephardicTzitzit(x, y);
+    } else if (typeId === 'techelet') {
+      drawAshkenaziTzitzit(x, y, true); // Re-use Ashkenazi structure with Blue thread
+    } else {
+      // Standard / Default
+      drawAshkenaziTzitzit(x, y, false);
+    }
+
+  } catch (e) {
+    console.error("Error in drawTzitzitFromHoles:", e);
+  }
+}
+
+function drawAshkenaziTzitzit(x, y, hasBlue = false) {
+  // Pattern: 7 - 8 - 11 - 13 (Ashkenazi)
+  // Structure: Double Knot -> Windings -> Double Knot ...
+  const segmentLength = 8; // Pixel length per winding section
+  const knotSize = 4;
+  let currentY = y;
+  const mainColor = '#FDFDFD'; // White string
+  const blueColor = '#1a4a8a'; // Techelet
+
+  // Draw simplified hanging strings (Core)
+  const totalLength = 120; // px
+  // Draw loose strings first (underneath the knots)
+  drawLooseStrings(x, y + 45, totalLength - 45, hasBlue);
+
+  // Draw The Gedil (Wound Section)
+  // 5 Knots, 4 Spaces
+  const pattern = [7, 8, 11, 13];
+
+  // Initial Knot (at hole)
+  drawKnot(x, currentY, knotSize, mainColor);
+  currentY += knotSize;
+
+  pattern.forEach((count, idx) => {
+    // windings
+    const windingHeight = count * 0.8; // Approximate height based on count
+
+    // Draw Winding Block
+    ctx.fillStyle = hasBlue && idx % 2 !== 0 ? blueColor : mainColor; // Alternating for visual effect if blue? 
+    // Actually Techelet pattern is specific. For visualization, we'll keep it simple:
+    // If hasBlue, make the windings striped blue/white
+
+    if (hasBlue) {
+      drawStripedWinding(x - 2, currentY, 4, windingHeight, mainColor, blueColor);
+    } else {
+      ctx.fillStyle = mainColor;
+      ctx.fillRect(x - 2, currentY, 4, windingHeight);
+      // Add texture lines
+      ctx.strokeStyle = '#E0E0E0';
+      ctx.lineWidth = 0.5;
+      for (let w = 0; w < windingHeight; w += 2) {
+        ctx.beginPath(); ctx.moveTo(x - 2, currentY + w); ctx.lineTo(x + 2, currentY + w); ctx.stroke();
+      }
+    }
+
+    currentY += windingHeight;
+
+    // Knot
+    drawKnot(x, currentY, knotSize, mainColor);
+    currentY += knotSize;
+  });
+}
+
+function drawSephardicTzitzit(x, y) {
+  // Pattern: 10 - 5 - 6 - 5
+  // Each winding (Chulya) is distinct.
+  // Using similar loop to Ashkenazi but different counts
+  const knotSize = 4;
+  let currentY = y;
+  const mainColor = '#FDFDFD';
+
+  const totalLength = 120;
+  drawLooseStrings(x, y + 40, totalLength - 40, false);
+
+  const pattern = [10, 5, 6, 5];
+
+  drawKnot(x, currentY, knotSize, mainColor);
+  currentY += knotSize;
+
+  pattern.forEach(count => {
+    const windingHeight = count * 0.8;
+
+    // Draw Winding (Chulya)
+    // Sephardic often has a ridge or specific loop.
+    ctx.fillStyle = mainColor;
+    ctx.fillRect(x - 2, currentY, 4, windingHeight);
+
+    // Ridge texture
+    ctx.strokeStyle = '#DDD';
+    ctx.lineWidth = 1;
+    // Draw diagonal ridges
+    for (let w = 0; w < windingHeight; w += 3) {
+      ctx.beginPath(); ctx.moveTo(x - 2, currentY + w); ctx.lineTo(x + 2, currentY + w + 2); ctx.stroke();
+    }
+
+    currentY += windingHeight;
+
+    drawKnot(x, currentY, knotSize, mainColor);
+    currentY += knotSize;
+  });
+}
+
+function drawKnot(x, y, size, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y + size / 2, size / 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#CCC';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function drawStripedWinding(x, y, w, h, c1, c2) {
+  for (let i = 0; i < h; i += 2) {
+    ctx.fillStyle = (i % 4 === 0) ? c2 : c1;
+    ctx.fillRect(x, y + i, w, 2);
+  }
+}
+
+function drawLooseStrings(x, y, length, hasBlue) {
+  // 8 strings hanging
+  const spread = 8;
+  const stringColor = '#F0F0F0';
+  const blueString = '#1a4a8a';
+
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    // If hasBlue, 1 or 2 strings are blue
+    const isBlue = hasBlue && (i === 0 || i === 7);
+    ctx.strokeStyle = isBlue ? blueString : stringColor;
+    ctx.lineWidth = 1.5;
+
+    // Natural curve randomness
+    const randomOffset = (Math.random() - 0.5) * 5;
+    const endX = x + (i - 3.5) * spread * 0.5 + randomOffset;
+
+    ctx.moveTo(x, y);
+    ctx.bezierCurveTo(x, y + length / 2, endX, y + length * 0.8, endX, y + length);
+    ctx.stroke();
+  }
+}
+
+// ... existing texture/stripe/atara/tzitzit functions ...
+
+// UI Rendering
+// ...
+
+// Listener for Flip Button
+if (flipViewBtn) {
+  flipViewBtn.addEventListener('click', () => {
+    state.isBackView = !state.isBackView;
+    flipViewBtn.innerText = state.isBackView ? "Turn Over (Front Side)" : "Turn Over (Back Side)";
+    renderCanvas();
+  });
+}
+
+// ... existing listeners ...
+
+
+
+
 
 function drawTexture(x, y, w, h) {
   // Very subtle pattern to mimic fabric
@@ -141,7 +406,7 @@ function drawTexture(x, y, w, h) {
 function drawStripePattern(x, y, w, h) {
   // Dimensions in inches
   const TALLIT_LENGTH = 60;
-  const STRIPE_START_OFFSET = 10;
+  const STRIPE_START_OFFSET = 5;
 
   // Calculate Scale (Pixels Per Inch)
   // Assuming full canvas width represents the 60 inches of the Tallit
@@ -199,7 +464,9 @@ function drawAtara(x, y, w) {
   ctx.fillRect(ataraX, y, ataraWidth, ataraHeight);
 
   // Border
-  ctx.strokeStyle = state.stripeColors[0].hex; // match first stripe
+  // Try to match first stripe color, otherwise default to a neutral grey
+  const firstStripe = state.stripePattern.find(s => s.type === 'stripe');
+  ctx.strokeStyle = firstStripe ? firstStripe.color.hex : '#888';
   ctx.lineWidth = 1;
   ctx.strokeRect(ataraX, y, ataraWidth, ataraHeight);
 }
@@ -257,8 +524,8 @@ function drawSingleTzitzit(cx, cy, mainColor, secColor) {
 function renderControls() {
   // 1. Zone Usage Logic
   const currentUsage = state.stripePattern.reduce((acc, item) => acc + item.width, 0);
-  zoneUsageEl.innerHTML = `${currentUsage.toFixed(2)}"`;
-  zoneUsageEl.style.color = currentUsage > 10 ? '#ff6b6b' : 'inherit';
+  zoneUsageEl.innerHTML = `${currentUsage.toFixed(2)}" / 12"`;
+  zoneUsageEl.style.color = currentUsage > 12 ? '#ff6b6b' : 'inherit';
 
   // 2. Render Stripe Stack
   if (state.stripePattern.length === 0) {
@@ -311,11 +578,11 @@ function renderControls() {
 function attachListeners() {
   // Add Stripe/Space Buttons
   document.querySelectorAll('.btn-add-stripe').forEach(btn => {
-    btn.onclick = () => addStripeItem(parseFloat(btn.dataset.size), 'stripe');
+    btn.onclick = () => addStripeItem(parseFloat(btn.dataset.size), parseInt(btn.dataset.threads), 'stripe');
   });
 
   document.querySelectorAll('.btn-add-space').forEach(btn => {
-    btn.onclick = () => addStripeItem(parseFloat(btn.dataset.size), 'space');
+    btn.onclick = () => addStripeItem(parseFloat(btn.dataset.size), parseInt(btn.dataset.threads), 'space');
   });
 
   // Stack Interactions (Select / Delete)
@@ -339,7 +606,6 @@ function attachListeners() {
       }
     });
   });
-
 
   // Color Pickers
   document.querySelectorAll('.color-swatch').forEach(el => {
@@ -376,17 +642,18 @@ function attachListeners() {
 }
 
 // Logic Helpers
-function addStripeItem(size, type) {
+function addStripeItem(size, threads, type) {
   const currentUsage = state.stripePattern.reduce((acc, item) => acc + item.width, 0);
 
-  if (currentUsage + size > 10.01) { // .01 for float margin
-    alert("Pattern limit reached! The stripe zone spans 10 inches.");
+  if (currentUsage + size > 12.01) { // .01 for float margin
+    alert("Pattern limit reached! The stripe zone spans 12 inches.");
     return;
   }
 
   const newItem = {
     id: Date.now(),
     width: size,
+    threads: threads,
     type: type,
     color: type === 'stripe' ? COLORS[8] : null // Default Blue for stripes
   };
@@ -412,13 +679,106 @@ function removeStripeItem(id) {
   updateSummary();
 }
 
-function updateSummary() {
-  designSummary.innerHTML = `
-        <strong>Base:</strong> ${state.baseColor.name} <br>
-        <strong>Stripes:</strong> Custom Pattern <br>
-        <strong>Style:</strong> ${state.tzitzitType.name}
-    `;
+// Weaving Calculation
+function calculateWeavingPattern() {
+  // Dimensions
+  const TALLIT_WIDTH_INCHES = 60;
+  const TALLIT_HEIGHT_INCHES = 45;
+
+  const totalStripesWidth = state.stripePattern.reduce((acc, item) => acc + item.width, 0);
+
+  // Calculate total threads
+  let totalThreads = 0;
+  state.stripePattern.forEach(item => {
+    // Use stored threads if available, or calculate (1 thread = 3/8" / 4 = 0.09375")
+    const t = item.threads || Math.round(item.width / 0.09375);
+    totalThreads += t;
+  });
+
+  return {
+    width: TALLIT_WIDTH_INCHES,
+    height: TALLIT_HEIGHT_INCHES,
+    totalPatternWidth: totalStripesWidth.toFixed(2),
+    threadCount: `${totalThreads} Threads`
+  };
 }
+
+// Helper to get thread counts by color
+function getThreadCountsByColor() {
+  const colorCounts = new Map();
+  state.stripePattern.forEach(item => {
+    if (item.type === 'stripe') {
+      const colorName = item.color.name;
+      const t = item.threads || Math.round(item.width / 0.09375);
+
+      if (!colorCounts.has(colorName)) {
+        colorCounts.set(colorName, { color: item.color, count: 0 });
+      }
+      colorCounts.get(colorName).count += t;
+    }
+  });
+  return Array.from(colorCounts.values());
+}
+
+function updateSummary() {
+  try {
+    const el = document.getElementById('designSummary');
+    if (!el) {
+      console.error('designSummary element not found!');
+      return;
+    }
+
+    const weavingData = calculateWeavingPattern();
+    const threadCounts = getThreadCountsByColor();
+
+    console.log('Updating summary:', weavingData, threadCounts);
+
+    let colorsHtml = '';
+    if (threadCounts.length > 0) {
+      colorsHtml = `
+        <div style="margin-top: 0.5rem;">
+          <strong>Thread Counts by Color:</strong>
+          <div style="margin-top: 0.3rem; display: flex; flex-direction: column; gap: 0.3rem;">
+            ${threadCounts.map(item => `
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <div style="width: 14px; height: 14px; background-color: ${item.color.hex}; border: 1px solid #666; border-radius: 50%;"></div>
+                <small style="opacity: 0.9;">${item.color.name} — <strong>${item.count} Threads</strong></small>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } else {
+      colorsHtml = `<small style="opacity: 0.5; display: block; margin-top: 0.5rem;">No stripes added yet.</small>`;
+    }
+
+    el.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div>
+              <strong>Base:</strong> ${state.baseColor.name} <br>
+              <strong>Style:</strong> ${state.tzitzitType.name} <br>
+              <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 0.5rem 0;">
+              <strong>Proportions:</strong> <br>
+              <small>Landscape (${weavingData.width}" x ${weavingData.height}")</small><br>
+              <small>Pattern Width: ${weavingData.totalPatternWidth}"</small><br>
+            </div>
+            <div>
+               ${colorsHtml}
+               <div style="margin-top: 1rem;">
+                  <strong>Total Threads:</strong> <br>
+                  <small>${weavingData.threadCount}</small>
+               </div>
+            </div>
+          </div>
+      `;
+  } catch (e) {
+    console.error("Error in updateSummary:", e);
+  }
+}
+
+// Expose for debugging
+window.updateSummary = updateSummary;
+window.state = state;
 
 // Download Action
 downloadBtn.addEventListener('click', () => {
@@ -426,7 +786,92 @@ downloadBtn.addEventListener('click', () => {
   link.download = `My-Tallit-Design-${Date.now()}.png`;
   link.href = canvas.toDataURL();
   link.click();
+
+  // Also open in new tab for immediate viewing
+  const newTab = window.open();
+  if (newTab) {
+    newTab.document.write('<img src="' + link.href + '" style="max-width:100%"/>');
+    newTab.document.title = "Tallit Design Preview";
+  }
 });
+
+
+function drawFringes(x, y, w, h) {
+  console.log('drawFringes called', { x, y, w, h });
+  // Config
+  const FRINGE_LENGTH_INCHES = 3;
+  const FRINGE_SPACING_INCHES = 1;
+  const CORNER_OFFSET_INCHES = 4.5;
+  const TALLIT_HEIGHT_INCHES = 45; // Fixed for Landscape
+
+  const ppi = h / TALLIT_HEIGHT_INCHES;
+
+  const fringeLenPx = FRINGE_LENGTH_INCHES * ppi;
+  const offsetPx = CORNER_OFFSET_INCHES * ppi;
+  const spacingPx = FRINGE_SPACING_INCHES * ppi;
+
+  const startFringeY = y + offsetPx;
+  const endFringeY = y + h - offsetPx;
+
+  // Helper to draw a single twisted strand
+  function drawTwistedStrand(sx, sy, ex, ey) {
+    // 1. Black Shadow / Outline (Thicker)
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(ex, ey);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 5; // Slightly thicker
+    ctx.stroke();
+
+    // 2. White Main Body
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(ex, ey);
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // 3. Twist Texture (High Contrast Black Diagonals)
+    const dx = ex - sx;
+    const dy = ey - sy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+    const twistSpacing = 10; // Looser twist to match user preference
+
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(angle);
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#000000'; // Black for maximum contrast
+    ctx.lineWidth = 1;
+
+    // Draw diagonals
+    for (let i = 2; i < len - 2; i += twistSpacing) {
+      ctx.moveTo(i, -1.5);
+      ctx.lineTo(i + 2, 1.5);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Draw Fringes Loop
+  for (let fy = startFringeY; fy <= endFringeY; fy += spacingPx) {
+    // Left Side
+    drawTwistedStrand(x, fy, x - fringeLenPx, fy);
+
+    // Right Side
+    drawTwistedStrand(x + w, fy, x + w + fringeLenPx, fy);
+  }
+}
+
+
+function init() {
+  console.log('Initializing Tallit Designer...');
+  renderControls();
+  renderCanvas();
+  updateSummary();
+}
 
 // Run
 init();
