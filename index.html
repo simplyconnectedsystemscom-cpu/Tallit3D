@@ -52,7 +52,8 @@
         </div>
 
         <div class="canvas-controls">
-          <button id="flipViewBtn" class="btn btn-secondary" style="margin-right: 1rem; background: rgba(255,255,255,0.1);">Turn Over (Back Side)</button>
+          <button id="flipViewBtn" class="btn btn-secondary"
+            style="margin-right: 1rem; background: rgba(255,255,255,0.1);">Turn Over (Back Side)</button>
           <button id="downloadBtn" class="btn">Download Design</button>
         </div>
       </div>
@@ -71,7 +72,7 @@
 
         <div class="control-group">
           <h3>2. Build Your Pattern</h3>
-          <p class="usage-info">Zone Usage: <span id="zoneUsage">0"</span> / 10"</p>
+          <p class="usage-info">Zone Usage: <span id="zoneUsage">0"</span> / 12"</p>
 
           <div class="builder-controls">
             <div class="control-row">
@@ -103,7 +104,16 @@
         </div>
 
         <div class="control-group">
-          <h3>3. Tzitzit Type</h3>
+          <h3>3. Atara Style (Embroidery) <span
+              style="font-size: 0.8rem; opacity: 0.7; font-weight: normal; margin-left: 5px;">(Select One)</span></h3>
+          <div class="tzitzit-selector" id="ataraSelector">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3>4. Tzitzit Type <span
+              style="font-size: 0.8rem; opacity: 0.7; font-weight: normal; margin-left: 5px;">(Select One)</span></h3>
           <div class="tzitzit-selector" id="tzitzitSelector">
             <!-- Dynamically populated -->
           </div>
@@ -116,6 +126,18 @@
       </aside>
     </main>
   </div>
+
+  <!-- Image Modal -->
+  <div id="imageModal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s;">
+    <div style="position: relative; max-width: 90%; max-height: 90%;">
+      <span id="closeModal"
+        style="position: absolute; top: -40px; right: 0; font-size: 30px; color: white; cursor: pointer; font-weight: bold;">&times;</span>
+      <img id="modalImage" src=""
+        style="max-width: 100%; max-height: 80vh; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); background: white;">
+    </div>
+  </div>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 

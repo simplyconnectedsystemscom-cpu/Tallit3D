@@ -50,20 +50,32 @@ const COLORS = [
 ];
 
 const TZITZIT_TYPES = [
-  { id: 'white', name: 'Standard White', description: 'All white strings' },
-  { id: 'techelet', name: 'Techelet (Blue)', description: 'White with blue thread' },
-  { id: 'ashkenazi', name: 'Ashkenazi Knot', description: '7-8-11-13 windings' },
-  { id: 'sephardic', name: 'Sephardic Knot', description: '10-5-6-5 windings' }
+  { id: 'none', name: 'No Tzitzit', description: 'Do not attach strings', image: null },
+  { id: 'white', name: 'Standard White', description: 'All white strings', image: '/images/ashkenazi.png' },
+  { id: 'techelet', name: 'Techelet (Blue)', description: 'White with blue thread', image: '/images/ashkenazi.png' },
+  { id: 'ashkenazi', name: 'Ashkenazi Knot', description: '7-8-11-13 windings', image: '/images/ashkenazi.png' },
+  { id: 'sephardic', name: 'Sephardic Knot', description: '10-5-6-5 windings', image: '/images/sephardic.png' },
+  { id: 'chabad', name: 'Chabad (Ari Zal)', description: 'Chulya groups 3-3-3', image: '/images/chabad.png' },
+  { id: 'yemenite', name: 'Yemenite (Rambam)', description: 'Specialized 7-13 chulyot', image: '/images/yemenite.png' },
+  { id: 'vilna', name: 'Vilna Gaon', description: 'Gra method 13 windings', image: '/images/vilna.png' }
 ];
 
-// State
+const ATARA_STYLES = [
+  { id: 'none', name: 'No Atara', text: '', meaning: 'Simple fabric band' },
+  { id: 'blessing', name: 'The Blessing (L\'hit\'atef)', text: '...אֲשֶׁר קִדְּשָׁנוּ בְּמִצְוֹתָיו וְצִוָּנוּ לְהִתְעַטֵּף בַּצִּיצִת', meaning: '...Who commanded us to wrap ourselves in Tzitzit' },
+  { id: 'shiviti', name: 'Shiviti Hashem', text: 'שִׁוִּיתִי יְהוָה לְנֶגְדִּי תָמִיד', meaning: 'I have set the Lord always before me (Psalm 16:8)' },
+  { id: 'etz_chaim', name: 'Etz Chaim (Tree of Life)', text: 'עֵץ־חַיִּים הִיא לַמַּחֲזִיקִים בָּהּ', meaning: 'It is a Tree of Life to those who hold fast to it (Proverbs 3:18)' },
+  { id: 'jerusalem', name: 'Jerusalem Skyline', text: 'אִם־אֶשְׁכָּחֵךְ יְרוּשָׁלָ‍ִם', meaning: 'If I forget thee, O Jerusalem... (Psalm 137:5)' }
+];
+
 // State
 let state = {
   baseColor: COLORS[1], // Default Blanchi
   stripePattern: [],
   activeStripeId: null,
   tzitzitType: TZITZIT_TYPES[0],
-  isBackView: false // New state for flipping
+  ataraStyle: ATARA_STYLES[1], // Default to Blessing
+  isBackView: false
 };
 
 // ... elements ...
@@ -73,6 +85,7 @@ const ctx = canvas.getContext('2d');
 const zoneUsageEl = document.getElementById('zoneUsage');
 const stripeStack = document.getElementById('stripeStack');
 const stripeColorPicker = document.getElementById('stripeColorPicker');
+const ataraSelector = document.getElementById('ataraSelector');
 const tzitzitSelector = document.getElementById('tzitzitSelector');
 const downloadBtn = document.getElementById('downloadBtn');
 
@@ -225,20 +238,109 @@ function drawTzitzitFromHoles(x, y, x2, y2) {
     // Determine style
     const typeId = state.tzitzitType.id;
 
-    if (typeId === 'ashkenazi') {
-      drawAshkenaziTzitzit(x, y);
-    } else if (typeId === 'sephardic') {
-      drawSephardicTzitzit(x, y);
-    } else if (typeId === 'techelet') {
-      drawAshkenaziTzitzit(x, y, true); // Re-use Ashkenazi structure with Blue thread
-    } else {
-      // Standard / Default
-      drawAshkenaziTzitzit(x, y, false);
+    if (typeId === 'none') {
+      return; // Do not draw hanging tzitzit
     }
 
+    // Dispatch to specific drawing function
+    switch (typeId) {
+      case 'ashkenazi':
+        drawAshkenaziTzitzit(x, y);
+        break;
+      case 'sephardic':
+        drawSephardicTzitzit(x, y);
+        break;
+      case 'techelet':
+        drawAshkenaziTzitzit(x, y, true);
+        break;
+      case 'chabad':
+        drawChabadTzitzit(x, y);
+        break;
+      case 'yemenite':
+        drawYemeniteTzitzit(x, y);
+        break;
+      case 'vilna':
+        drawVilnaTzitzit(x, y);
+        break;
+      default:
+        drawAshkenaziTzitzit(x, y, false);
+    }
   } catch (e) {
     console.error("Error in drawTzitzitFromHoles:", e);
   }
+}
+
+// --- Specific Style Implementations ---
+
+function drawChabadTzitzit(x, y) {
+  // Chabad: Groups of windings 3-3-3 etc.
+  // Visual characteristic: Ridged chulyot (sections)
+  const totalLength = 120;
+  drawLooseStrings(x, y + 40, totalLength - 40, false); // Standard white strings
+
+  let currentY = y;
+  const knotSize = 4;
+
+  // Pattern: Upper Knot -> [Chulya: 3, 3, 3] -> Double Knot...
+  // We'll simulate 4 major sections (Chulyot) separated by knots
+
+  drawKnot(x, currentY, knotSize, '#FDFDFD');
+  currentY += knotSize;
+
+  for (let i = 0; i < 4; i++) {
+    const sectionH = 15;
+    ctx.fillStyle = '#FDFDFD'; // White
+    ctx.fillRect(x - 2, currentY, 4, sectionH);
+
+    // Chabad specific texture: Distinct sub-groups
+    ctx.strokeStyle = '#CCC';
+    ctx.lineWidth = 1;
+    // Draw lines to separate the "3-3-3" within the section
+    for (let k = 1; k < 3; k++) {
+      let ly = currentY + (sectionH * (k / 3));
+      ctx.beginPath(); ctx.moveTo(x - 2, ly); ctx.lineTo(x + 2, ly); ctx.stroke();
+    }
+
+    currentY += sectionH;
+    drawKnot(x, currentY, knotSize, '#FDFDFD');
+    currentY += knotSize;
+  }
+}
+
+function drawYemeniteTzitzit(x, y) {
+  // Rambam: Distinct special knot
+  // Often 7 or 13 chulyot.
+  // Visual: A very structured, almost "vertebrae" look.
+  const totalLength = 120;
+  drawLooseStrings(x, y + 50, totalLength - 50, false);
+
+  let currentY = y;
+
+  // Simulating 7 chulyot (segments)
+  for (let i = 0; i < 7; i++) {
+    // Yemenite Knot/Chulya is distinct
+    ctx.fillStyle = '#FDFDFD';
+    ctx.fillRect(x - 3, currentY, 6, 6); // Wider, shorter segment
+
+    // Texture "Wrap"
+    ctx.beginPath();
+    ctx.moveTo(x - 3, currentY + 3);
+    ctx.lineTo(x + 3, currentY + 3);
+    ctx.strokeStyle = '#BBB';
+    ctx.stroke();
+
+    currentY += 8; // Spacing
+  }
+}
+
+function drawVilnaTzitzit(x, y) {
+  // Gra: Similar to Ashkenazi but 13 windings total usually distributed.
+  // Visual: Use Techelet if applicable, but standard Gra is white.
+  // We'll make it standard white with specific winding counts: 4, 4, 4, 1 ? 
+  // Or standard 7-8-11-13 but different nuances.
+  // Let's visualize distinct 13 bands.
+
+  drawAshkenaziTzitzit(x, y, false); // reusing base for now as structurally similar at this scale
 }
 
 function drawAshkenaziTzitzit(x, y, hasBlue = false) {
@@ -415,7 +517,7 @@ function drawStripePattern(x, y, w, h) {
   const startPixelLeft = x + (STRIPE_START_OFFSET * ppi);
   const startPixelRight = x + w - (STRIPE_START_OFFSET * ppi);
 
-  // Draw Left Side (from 10" inwards)
+  // Draw Left Side (from 5" inwards)
   let currentPos = startPixelLeft;
 
   state.stripePattern.forEach(item => {
@@ -459,16 +561,81 @@ function drawAtara(x, y, w) {
   const ataraHeight = 40;
   const ataraX = x + (w / 2) - (ataraWidth / 2);
 
-  // Draw simplified Atara with possibly different texture or embroidery hint
-  ctx.fillStyle = 'rgba(255,255,255,0.2)'; // Just a highlight
-  ctx.fillRect(ataraX, y, ataraWidth, ataraHeight);
+  const style = state.ataraStyle || ATARA_STYLES[0];
+
+  if (style.id === 'none') return;
+
+  // Determine shape geometry
+  const ptSize = 15; // Triangle point size
+  const mainX = ataraX + ptSize;
+  const mainW = ataraWidth - (ptSize * 2);
+
+  // Custom Path for Pointed Atara
+  ctx.beginPath();
+  // Left Point
+  ctx.moveTo(ataraX, y + ataraHeight / 2);
+  // Top Left Inner
+  ctx.lineTo(ataraX + ptSize, y);
+  // Top RIght Inner
+  ctx.lineTo(ataraX + ataraWidth - ptSize, y);
+  // Right Point
+  ctx.lineTo(ataraX + ataraWidth, y + ataraHeight / 2);
+  // Bottom Right Inner
+  ctx.lineTo(ataraX + ataraWidth - ptSize, y + ataraHeight);
+  // Bottom Left Inner
+  ctx.lineTo(ataraX + ptSize, y + ataraHeight);
+  ctx.closePath();
+
+  // Draw Background
+  ctx.fillStyle = '#F8F9FA'; // Slightly distinctive fabric (Silk/Velvet)
+  ctx.fill();
 
   // Border
-  // Try to match first stripe color, otherwise default to a neutral grey
-  const firstStripe = state.stripePattern.find(s => s.type === 'stripe');
-  ctx.strokeStyle = firstStripe ? firstStripe.color.hex : '#888';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(ataraX, y, ataraWidth, ataraHeight);
+  ctx.strokeStyle = '#B0B0B0'; // Silver thread look
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Skyline if Jerusalem
+  if (style.id === 'jerusalem') {
+    drawJerusalemSkyline(ataraX, y, ataraWidth, ataraHeight);
+  }
+
+  // Draw Text / Embroidery
+  if (style.text && style.id !== 'none') {
+    ctx.save();
+    ctx.fillStyle = '#222'; // Dark embroidery
+    // Try to mimic Hebrew Serif availability
+    ctx.font = 'bold 16px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Draw Text
+    ctx.fillText(style.text, ataraX + ataraWidth / 2, y + ataraHeight / 2);
+    ctx.restore();
+  }
+}
+
+function drawJerusalemSkyline(x, y, w, h) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(212, 175, 55, 0.3)'; // Gold wash
+  ctx.beginPath();
+  ctx.moveTo(x, y + h);
+
+  // Create a simple procedural skyline
+  const steps = 20;
+  const stepW = w / steps;
+
+  for (let i = 0; i <= steps; i++) {
+    const px = x + (i * stepW);
+    // Humps
+    const ph = (Math.sin(i * 1.5) + 1) * (h * 0.3) + 5;
+    ctx.lineTo(px, y + h - ph);
+  }
+
+  ctx.lineTo(x + w, y + h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawTzitzitColors(x, y, w, h) {
@@ -563,12 +730,35 @@ function renderControls() {
   `).join('');
 
 
-  // 3. Tzitzit Type
+  // 3. Atara Style
+  if (ataraSelector) {
+    ataraSelector.innerHTML = ATARA_STYLES.map(s => `
+      <div class="tzitzit-option ${state.ataraStyle && state.ataraStyle.id === s.id ? 'selected' : ''}"
+           data-id="${s.id}" data-type="atara" style="flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px; height: auto;">
+         <div style="font-weight: bold; font-size: 0.95rem;">${s.name}</div>
+         ${s.text ? `<div style="font-family: 'Times New Roman', serif; font-size: 1.1rem; direction: rtl; width: 100%; text-align: right; color: #ffffff; margin: 4px 0;">${s.text}</div>` : ''}
+         <div style="font-size: 0.8rem; opacity: 0.7; font-style: italic;">${s.meaning}</div>
+      </div>
+    `).join('');
+  }
+
+  // 4. Tzitzit Type
   tzitzitSelector.innerHTML = TZITZIT_TYPES.map(t => `
     <div class="tzitzit-option ${state.tzitzitType.id === t.id ? 'selected' : ''}"
-         data-id="${t.id}">
-       <div style="font-weight: bold;">${t.name}</div>
-       <div style="font-size: 0.8rem; opacity: 0.7;">${t.description}</div>
+         data-id="${t.id}" data-type="tzitzit" style="flex-direction: column; align-items: flex-start; height: auto; padding-bottom: 0;">
+       <div style="padding: 10px 10px 0 10px;">
+         <div style="font-weight: bold;">${t.name}</div>
+         <div style="font-size: 0.8rem; opacity: 0.7;">${t.description}</div>
+       </div>
+       ${t.image ? `
+         <div style="width: 100%; margin-top: 8px; border-top: 1px solid #444;">
+           <img src="${t.image}" 
+                alt="${t.name} Diagram" 
+                class="tzitzit-preview-img" 
+                data-img="${t.image}"
+                style="width: 100%; height: auto; display: block; cursor: zoom-in; opacity: 0.85; transition: opacity 0.2s;">
+         </div>
+       ` : ''}
     </div>
   `).join('');
 
@@ -576,6 +766,65 @@ function renderControls() {
 }
 
 function attachListeners() {
+  // Atara Options
+  if (ataraSelector) {
+    ataraSelector.querySelectorAll('.tzitzit-option').forEach(el => {
+      el.addEventListener('click', (e) => {
+        const id = e.currentTarget.dataset.id;
+        state.ataraStyle = ATARA_STYLES.find(s => s.id === id);
+        renderControls();
+        renderCanvas();
+        updateSummary();
+      });
+    });
+  }
+
+  // Tzitzit Options
+  tzitzitSelector.querySelectorAll('.tzitzit-option').forEach(el => {
+    el.addEventListener('click', (e) => {
+      // Check if clicked ON the image
+      if (e.target.classList.contains('tzitzit-preview-img')) {
+        e.stopPropagation(); // prevent selection if just viewing image
+        const imgSrc = e.target.dataset.img;
+        openModal(imgSrc);
+        return;
+      }
+
+      const id = e.currentTarget.dataset.id;
+      state.tzitzitType = TZITZIT_TYPES.find(t => t.id === id);
+      renderControls();
+      renderCanvas();
+      updateSummary();
+    });
+  });
+
+  // Image Modal Logic
+  const modal = document.getElementById('imageModal');
+  const modalImg = document.getElementById('modalImage');
+  const closeModal = document.getElementById('closeModal');
+
+  if (modal && closeModal) {
+    closeModal.onclick = () => {
+      modal.style.opacity = '0';
+      setTimeout(() => modal.style.display = 'none', 300);
+    };
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        modal.style.opacity = '0';
+        setTimeout(() => modal.style.display = 'none', 300);
+      }
+    };
+  }
+
+  function openModal(src) {
+    if (modal && modalImg) {
+      modalImg.src = src;
+      modal.style.display = 'flex';
+      // tiny delay to allow display:flex to apply before opacity transition
+      setTimeout(() => modal.style.opacity = '1', 10);
+    }
+  }
+
   // Add Stripe/Space Buttons
   document.querySelectorAll('.btn-add-stripe').forEach(btn => {
     btn.onclick = () => addStripeItem(parseFloat(btn.dataset.size), parseInt(btn.dataset.threads), 'stripe');
@@ -624,18 +873,6 @@ function attachListeners() {
 
       renderControls(); // Re-render to show updated color on the bar
       renderCanvas();   // Update Canvas
-      updateSummary();
-    });
-  });
-
-  // Tzitzit Selector
-  document.querySelectorAll('.tzitzit-option').forEach(el => {
-    el.addEventListener('click', (e) => {
-      const id = e.currentTarget.dataset.id;
-      state.tzitzitType = TZITZIT_TYPES.find(t => t.id === id);
-
-      renderControls();
-      renderCanvas();
       updateSummary();
     });
   });
@@ -757,6 +994,9 @@ function updateSummary() {
             <div>
               <strong>Base:</strong> ${state.baseColor.name} <br>
               <strong>Style:</strong> ${state.tzitzitType.name} <br>
+              <strong>Atara:</strong> ${state.ataraStyle.name} <br>
+              ${state.ataraStyle.id !== 'none' ? `<small style="opacity: 0.7; font-style: italic;">${state.ataraStyle.meaning}</small><br>` : ''}
+              
               <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 0.5rem 0;">
               <strong>Proportions:</strong> <br>
               <small>Landscape (${weavingData.width}" x ${weavingData.height}")</small><br>
